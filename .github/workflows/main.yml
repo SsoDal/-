@@ -1,6 +1,7 @@
 name: Real-time Economic Assistant
 on:
   schedule:
+    # 24시간 내내 5분마다 실행 (UTC 기준 0~23시 모두 포함)
     - cron: '*/5 * * * *'
   workflow_dispatch:
 jobs:
