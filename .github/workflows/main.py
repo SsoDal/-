@@ -31,6 +31,15 @@ def analyze_and_send(news_list, mode):
 
 if __name__ == "__main__":
     news = get_news()
-    if now.hour == 21 and 0 <= now.minute < 10: analyze_and_send(news, "daily")
-    elif 7 <= now.hour <= 18 and 0 <= now.minute < 10: analyze_and_send(news, "hourly")
-    else: analyze_and_send(news, "breaking")
+    
+    # 1. 밤 9시 (심층 레포트 보고)
+    if now.hour == 21 and 0 <= now.minute < 10:
+        analyze_and_send(news, "daily")
+        
+    # 2. 오전 7시 ~ 오후 6시 사이 정시 (브리핑 보고)
+    elif 7 <= now.hour <= 18 and 0 <= now.minute < 10:
+        analyze_and_send(news, "hourly")
+        
+    # 3. 그 외 모든 시간 (24시간 실시간 속보 감시)
+    else:
+        analyze_and_send(news, "breaking")
