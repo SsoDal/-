@@ -52,17 +52,7 @@ def analyze_and_send(news_list, mode):
 if __name__ == "__main__":
     news = get_news()
     
-    # 여기서부터 아랫줄들은 반드시 앞에 공백(들여쓰기)이 있어야 합니다.
-    if not news:
-        print("뉴스를 가져오지 못했습니다.")
-        exit()
-
-    # 1. 밤 9시 (데일리 레포트)
-    if now.hour == 21 and 0 <= now.minute < 10:
-        analyze_and_send(news, "daily")
-    # 2. 매시 정시 (07시 ~ 18시 정시 브리핑)
-    elif 7 <= now.hour <= 18 and 0 <= now.minute < 10:
-        analyze_and_send(news, "hourly")
-    # 3. 그 외 (실시간 속보 모드)
-    else:
-        analyze_and_send(news, "breaking")
+    # 테스트를 위해 '조건 무시'하고 무조건 브리핑 실행!
+    analyze_and_send(news, "hourly") 
+    
+    # 확인 후에는 다시 원래 코드로 돌려놓으셔야 24시간 조용히 감시합니다.
