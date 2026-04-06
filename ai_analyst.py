@@ -1,39 +1,41 @@
 import google.generativeai as genai
 from config import GEMINI_API_KEY, SYSTEM_PROMPT
 
-def analyze_with_gemini(compressed_news: str) -> str:
-    """구식 SDK + 모델 fallback (당신이 성공적으로 에러 메시지 받았던 방식)"""
+def analyze_with_gemini(compressed_news: str, mode: str = "full") -> str:
     if not GEMINI_API_KEY:
         raise Exception("GEMINI_API_KEY가 설정되지 않았습니다.")
 
     genai.configure(api_key=GEMINI_API_KEY)
 
-    # 2026년 4월 기준 안정적인 모델 순서 (2.0은 이미 종료됨)
-    model_names = [
-        'gemini-2.5-flash',
-        'gemini-2.5-flash-lite',
-        'gemini-1.5-flash'
-    ]
+    model_names = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-flash']
+
+    mode_instruction = "짧고 빠른 속보 형식으로 3\~4개 종목만 추천" if mode == "breaking" else "상세 종합 리포트 형식"
 
     for name in model_names:
         try:
-            print(f"🔄 모델 시도 중: {name}")
-            model = genai.GenerativeModel(name)
+            print(f"🔄 모델 시도: {name} ({mode} 모드)")
+            model = genai.GenerativeModel(
+                name,
+                generation_config=genai.GenerationConfig(
+                    response_mime_type="application/json",
+                    temperature=0.3,
+                    max_output_tokens=2048
+                )
+            )
 
             prompt = f"""{SYSTEM_PROMPT}
 
 {compressed_news}
 
-위 뉴스를 바탕으로 투자 리포트를 작성하세요.
-가독성을 위해 <b>태그, <i>태그 등을 적절히 사용하고, 줄바꿈을 잘 넣어주세요."""
+{mode_instruction}
+위 뉴스 제목에만 기반해서 추천해. 뉴스에 없는 내용은 절대 만들지 마."""
 
             response = model.generate_content(prompt)
-            print(f"✅ {name} 모델 성공")
+            print(f"✅ {name} 성공")
             return response.text
 
         except Exception as e:
-            print(f"❌ {name} 모델 호출 실패: {e}")
+            print(f"❌ {name} 실패: {e}")
             continue
 
-    # 모든 모델 실패
     raise Exception("모든 AI 모델 호출에 실패했습니다.")
