@@ -1,7 +1,8 @@
 import os
 import requests
+import time
 from bs4 import BeautifulSoup
-from google import genai  # <-- 2026년 최신 공식 라이브러리
+from google import genai
 from datetime import datetime
 import pytz
 
@@ -45,9 +46,8 @@ def main():
         
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
-            raise ValueError("GEMINI_API_KEY가 설정되지 않았습니다. GitHub Secrets를 확인하세요.")
+            raise ValueError("API 키 설정 누락")
         
-        # 최신 GenAI 클라이언트 호출
         client = genai.Client(api_key=api_key)
         
         prompt = f"""
@@ -62,16 +62,25 @@ def main():
         미국뉴스: {us_news}
         """
         
-        try:
-            # 최신 2.0 모델 직접 지정
-            response = client.models.generate_content(
-                model='gemini-2.0-flash',
-                contents=prompt
-            )
-            report = response.text
-        except Exception as api_err:
-            # API 내부에서 발생한 '진짜 에러 이유'를 추출
-            raise RuntimeError(f"구글 API 거부: {str(api_err)}")
+        report = ""
+        max_retries = 3
+        
+        # 429 방어용 재시도 로직
+        for attempt in range(max_retries):
+            try:
+                response = client.models.generate_content(
+                    model='gemini-2.0-flash',
+                    contents=prompt
+                )
+                report = response.text
+                break  # 성공 시 루프 탈출
+            except Exception as api_err:
+                err_str = str(api_err)
+                if '429' in err_str or 'RESOURCE_EXHAUSTED' in err_str:
+                    if attempt < max_retries - 1:
+                        time.sleep(20)  # 20초 대기 후 재시도
+                        continue
+                raise RuntimeError(f"구글 API 거부: {err_str}")
 
         final_msg = f"<b>📊 글로벌 증권 리포트 ({now.strftime('%H:%M')})</b>\n\n{report}"
         send_telegram(final_msg)
