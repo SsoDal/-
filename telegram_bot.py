@@ -15,28 +15,36 @@ def send_telegram(html_message: str):
     r.raise_for_status()
 
 def send_error_telegram(error_message: str):
-    send_telegram(error_message)
+    try:
+        send_telegram(error_message)
+    except:
+        pass
 
 def clean_json_text(text: str) -> str:
-    """JSON 깨짐 복구"""
+    """JSON 깨짐 복구 - 더 강력하게"""
+    if not text:
+        return "{}"
     text = text.strip()
+    
     # 코드블록 제거
-    if text.startswith("```json
-    if text.startswith("```"): text = text[3:]
-    if text.endswith("```"): text = text[:-3]
-    # 불필요한 문자 제거
-    text = re.sub(r'^\s*```json\s*|\s*```\s*$', '', text, flags=re.MULTILINE)
-    return text.strip()
+    text = re.sub(r'^```json
+    text = re.sub(r'^```\s*', '', text, flags=re.MULTILINE)
+    text = re.sub(r'```\s*$', '', text, flags=re.MULTILINE)
+    
+    # 불필요한 앞뒤 문자 제거
+    text = text.strip('` \n\t')
+    
+    return text
 
 def format_to_html(report_text: str, mode: str) -> str:
-    """초깔끔 HTML + 이모티콘 + 가독성 최적화"""
+    """JSON → 초깔끔 HTML (부호 전혀 안 보이게)"""
     cleaned = clean_json_text(report_text)
     
     try:
         data = json.loads(cleaned)
-    except:
-        # 최종 fallback
-        return f"<b>📊 {mode.upper()} 리포트</b>\n\n{report_text[:1000]}..."
+    except Exception as e:
+        print(f"JSON 파싱 실패: {e}")
+        return f"<b>📊 {mode.upper()} 리포트</b>\n\n{report_text[:800]}..."
 
     html = f"<b>📊 {data.get('report_title', f'{mode.upper()} 경제 리포트')}</b>\n\n"
 
