@@ -1,5 +1,4 @@
+google-genai
 requests
 beautifulsoup4
-google-genai
-pytz
-lxml
+tenacity
