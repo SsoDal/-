@@ -2,20 +2,32 @@ name: Daily Stock Report (경제 비서)
 
 on:
   schedule:
-    - cron: '*/30 * * * *'   # 30분마다 실행 (KST 시간 판단은 main.py에서 처리)
+    - cron: '*/30 * * * *'   # 30분마다 실행
   workflow_dispatch:
 
 jobs:
   report:
     runs-on: ubuntu-latest
+
+    # Node 24 강제 적용 (경고 제거)
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install -r requirements.txt
-      - run: python main.py
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run stock report
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python main.py
