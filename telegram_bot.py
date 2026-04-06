@@ -1,7 +1,6 @@
 import requests
 import json
 from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
-from typing import Dict, Any
 
 def send_telegram(html_message: str):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -18,28 +17,23 @@ def send_error_telegram(error_message: str):
     send_telegram(error_message)
 
 def format_to_html(report_text: str, mode: str) -> str:
-    """JSON을 예쁜 HTML + 이모티콘으로 변환"""
+    """JSON 파싱 후 예쁜 HTML + 이모티콘 + 표 형식으로 변환"""
     try:
-        data: Dict[str, Any] = json.loads(report_text)
+        data = json.loads(report_text)
     except:
-        # JSON 파싱 실패 시 원문 그대로 전송
-        return f"<b>📊 {mode.upper()} 리포트</b>\n\n{report_text}"
+        return f"<b>📊 {mode.upper()} 리포트</b>\n\n{report_text[:800]}..."
 
-    html = f"<b>📊 {data.get('title', '오늘의 AI 종목 추천')}</b>\n\n"
+    html = f"<b>📊 {data.get('report_title', f'{mode.upper()} 경제 리포트')}</b>\n\n"
 
-    # 코스피
-    html += "🔥 <b>코스피 TOP</b>\n"
-    for item in data.get("KOSPI", [])[:5]:
-        html += f"• <b>{item.get('종목명', 'N/A')}</b>\n"
-        html += f"   📌 이유: {item.get('추천_이유', '')}\n"
-        html += f"   ⚠️ 리스크: {item.get('리스크', '')}\n\n"
+    for market, title in [("kospi", "🔥 코스피 TOP 7"), ("kosdaq", "🔥 코스닥 TOP 7")]:
+        html += f"<b>{title}</b>\n"
+        for item in data.get(market, [])[:7]:
+            html += f"• <b>{item.get('종목명', 'N/A')}</b> "
+            html += f"(상승확률 <b>{item.get('상승확률', 0)}%</b> | 신뢰도 <b>{item.get('신뢰도', 0)}%</b>)\n"
+            html += f"   📌 상승요인: {item.get('상승요인', '')}\n"
+            html += f"   🎯 목표가: {item.get('목표가', '미정')}\n"
+            html += f"   📍 출처: {item.get('출처', '')}\n\n"
 
-    # 코스닥
-    html += "🔥 <b>코스닥 TOP</b>\n"
-    for item in data.get("KOSDAQ", [])[:5]:
-        html += f"• <b>{item.get('종목명', 'N/A')}</b>\n"
-        html += f"   📌 이유: {item.get('추천_이유', '')}\n"
-        html += f"   ⚠️ 리스크: {item.get('리스크', '')}\n\n"
-
-    html += "<i>⚠️ AI 분석 결과이며 투자 권유가 아닙니다. 항상 본인 판단으로 투자하세요.</i>"
+    html += "<i>⚠️ Gemini 분석 결과입니다. 투자 판단은 본인 책임입니다.</i>\n"
+    html += "<i>※ Grok/ChatGPT/Claude/Perplexity 분석은 추가 API 필요</i>"
     return html
