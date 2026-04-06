@@ -10,9 +10,9 @@ def analyze_with_gemini(compressed_news: str, mode: str = "full") -> str:
     model_names = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-flash']
 
     mode_instruction = (
-        "매우 짧고 빠른 속보 형식으로 코스피/코스닥 각 7개 종목 추천"
+        "매우 짧고 빠른 속보 형식으로 코스피/코스닥 각각 정확히 7개 종목 추천"
         if mode == "breaking" else
-        "상세 종합 브리핑 형식으로 코스피/코스닥 각 7개 종목 추천"
+        "상세 종합 브리핑 형식으로 코스피/코스닥 각각 정확히 7개 종목 추천"
     )
 
     for name in model_names:
@@ -23,7 +23,8 @@ def analyze_with_gemini(compressed_news: str, mode: str = "full") -> str:
                 generation_config=genai.GenerationConfig(
                     response_mime_type="application/json",
                     temperature=0.3,
-                    max_output_tokens=4096
+                    max_output_tokens=8192,          # 대폭 증가
+                    top_p=0.95
                 )
             )
 
@@ -32,10 +33,11 @@ def analyze_with_gemini(compressed_news: str, mode: str = "full") -> str:
 {compressed_news}
 
 {mode_instruction}
-뉴스에 없는 내용은 절대 만들지 말고, JSON을 완전하게 끝까지 출력하라."""
+JSON을 처음부터 끝까지 완전하게 출력하라. 절대 중간에 끊지 마라. 
+모든 배열은 정확히 7개 항목이어야 한다."""
 
             response = model.generate_content(prompt)
-            print(f"✅ {name} 성공")
+            print(f"✅ {name} 모델 성공")
             return response.text
 
         except Exception as e:
