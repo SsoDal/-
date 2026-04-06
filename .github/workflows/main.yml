@@ -21,3 +21,11 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python main.py
+
+      
+- name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # 최신 버전의 google-generativeai를 설치하여 모델 경로 문제를 해결합니다.
+          pip install -U requests beautifulsoup4 google-generativeai pytz lxml
+
