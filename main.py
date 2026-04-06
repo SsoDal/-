@@ -15,33 +15,28 @@ def main():
         if not all([TELEGRAM_TOKEN, TELEGRAM_CHAT_ID, GEMINI_API_KEY]):
             raise Exception("GitHub Secrets 누락")
 
-        # KST 시간 확인
         kst = datetime.now(pytz.timezone('Asia/Seoul'))
         hour = kst.hour
         print(f"🕒 현재 KST: {kst.strftime('%H:%M')}")
 
         if 7 <= hour <= 18:
             mode = "breaking"
-            print("📰 30분 간격 경제 속보 모드")
+            print("📰 실시간 속보 모드 (30분 간격)")
         elif hour == 21:
             mode = "full"
-            print("📊 오후 9시 종합 리포트 모드")
+            print("📊 오후 9시 종합 브리핑 모드")
         else:
-            print("⏰ 보고 시간대가 아닙니다. 스킵")
+            print("⏰ 보고 시간대가 아닙니다.")
             sys.exit(0)
 
-        # 뉴스 수집
         korean_news = get_korean_news()
         us_news = get_us_news()
         if len(korean_news) + len(us_news) == 0:
             raise Exception("뉴스 수집 실패")
 
         compressed = compress_news(korean_news, us_news)
-
-        # AI 분석
         recommendation_text = analyze_with_gemini(compressed, mode)
 
-        # 예쁜 HTML 변환
         html_msg = format_to_html(recommendation_text, mode)
         send_telegram(html_msg)
 
