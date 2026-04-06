@@ -5,7 +5,6 @@ import google.generativeai as genai
 from datetime import datetime
 import pytz
 
-# 초기 설정
 KST = pytz.timezone('Asia/Seoul')
 now = datetime.now(KST)
 
@@ -13,6 +12,7 @@ def send_telegram(message):
     token = os.getenv("TELEGRAM_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
     url = f"https://api.telegram.org/bot{token}/sendMessage"
+    # 마크다운보다 에러가 적은 HTML 모드 유지
     payload = {"chat_id": chat_id, "text": message, "parse_mode": "HTML"}
     return requests.post(url, json=payload)
 
@@ -22,53 +22,59 @@ def get_kr_news():
     try:
         res = requests.get(url, headers=headers, timeout=10)
         soup = BeautifulSoup(res.text, 'html.parser')
-        titles = [t.get_text().strip() for t in soup.select('.list_body ul li dt:not(.photo) a')[:10]]
-        return titles if titles else ["한국 뉴스를 가져오지 못했습니다."]
-    except: return ["한국 뉴스 수집 중 연결 오류 발생"]
+        return [t.get_text().strip() for t in soup.select('.list_body ul li dt:not(.photo) a')[:10]]
+    except: return []
 
 def get_us_news():
     url = "https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-US&gl=US&ceid=US:en"
     try:
         res = requests.get(url, timeout=10)
         soup = BeautifulSoup(res.content, 'xml')
-        items = soup.find_all('item')
-        return [i.title.get_text() for i in items[:10]]
-    except: return ["미국 뉴스 수집 중 연결 오류 발생"]
+        return [i.title.get_text() for i in soup.find_all('item')[:10]]
+    except: return []
 
 def main():
     try:
-        # 1. 뉴스 수집
         kr_news = get_kr_news()
         us_news = get_us_news()
         
-        # 2. AI 분석 설정
         genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-        # 가장 범용적이고 에러 없는 모델명 사용
-        model = genai.GenerativeModel('gemini-1.5-flash') 
         
-        prompt = f"""
-        당신은 수석 애널리스트입니다. 아래 뉴스를 보고 보고서를 작성하세요.
-        HTML 태그(<b>, <i>)를 적절히 섞어 가독성 있게 작성하세요.
+        # [핵심 수정] 2026년 표준 모델명인 gemini-2.0-flash 시도
+        # 만약 실패할 경우를 대비해 리스트 형태로 순차 시도합니다.
+        model_names = ['gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro']
+        response_text = ""
         
-        1. 시장 요약: 한/미 뉴스 핵심 요약 (번역 포함)
-        2. KOSPI 추천 5개: [종목명 / 목표치 / 적중확률 / 사유]
-        3. KOSDAQ 추천 5개: [종목명 / 목표치 / 적중확률 / 사유]
+        for model_name in model_names:
+            try:
+                model = genai.GenerativeModel(model_name)
+                prompt = f"""
+                당신은 20년 경력의 수석 애널리스트입니다. 아래 뉴스를 토대로 리포트를 작성하세요.
+                반드시 <b>태그를 활용해 가독성을 높이세요.
+                
+                1. 시장 브리핑 (한/미 주요 이슈 요약 및 번역)
+                2. KOSPI 추천 5개 (종목명/목표가/적중확률/사유)
+                3. KOSDAQ 추천 5개 (종목명/목표가/적중확률/사유)
+                
+                데이터:
+                한국: {kr_news}
+                미국: {us_news}
+                """
+                response = model.generate_content(prompt)
+                response_text = response.text
+                break # 성공하면 루프 탈출
+            except Exception as e:
+                print(f"{model_name} 시도 실패: {e}")
+                continue
         
-        데이터:
-        한국뉴스: {kr_news}
-        미국뉴스: {us_news}
-        """
-        
-        response = model.generate_content(prompt)
-        report = response.text
-        
-        # 3. 전송
-        final_msg = f"<b>[글로벌 증권 리포트 - {now.strftime('%H:%M')}]</b>\n\n{report}"
+        if not response_text:
+            raise Exception("모든 AI 모델 호출에 실패했습니다.")
+
+        final_msg = f"<b>📊 글로벌 증권 리포트 ({now.strftime('%Y-%m-%d %H:%M')})</b>\n\n{response_text}"
         send_telegram(final_msg)
         
     except Exception as e:
-        # 에러 발생 시 텔레그램으로 에러 내용 즉시 보고
-        send_telegram(f"⚠️ <b>시스템 에러 발생</b>\n원인: {str(e)}")
+        send_telegram(f"⚠️ <b>최종 시스템 에러</b>\n원인: {str(e)}")
 
 if __name__ == "__main__":
     main()
