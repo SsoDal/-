@@ -1,39 +1,39 @@
-from google import genai
-import json
-from tenacity import retry, stop_after_attempt, wait_exponential
-import google.genai.errors as genai_errors
-from config import MODEL_NAME, SYSTEM_PROMPT, RECOMMENDATION_SCHEMA
+import google.generativeai as genai
+from config import GEMINI_API_KEY, SYSTEM_PROMPT
 
-client = genai.Client()
+def analyze_with_gemini(compressed_news: str) -> str:
+    """구식 SDK + 모델 fallback (당신이 성공적으로 에러 메시지 받았던 방식)"""
+    if not GEMINI_API_KEY:
+        raise Exception("GEMINI_API_KEY가 설정되지 않았습니다.")
 
-@retry(
-    stop=stop_after_attempt(5),
-    wait=wait_exponential(multiplier=1, min=8, max=45),
-    retry=retry_if_exception_type((genai_errors.ClientError, Exception)),
-    reraise=True
-)
-def analyze_with_gemini(compressed_news: str) -> dict:
-    """최대한 단순화된 Gemini 호출 (2026년 최신 SDK 안전 방식)"""
-    prompt = f"""{SYSTEM_PROMPT}
+    genai.configure(api_key=GEMINI_API_KEY)
+
+    # 2026년 4월 기준 안정적인 모델 순서 (2.0은 이미 종료됨)
+    model_names = [
+        'gemini-2.5-flash',
+        'gemini-2.5-flash-lite',
+        'gemini-1.5-flash'
+    ]
+
+    for name in model_names:
+        try:
+            print(f"🔄 모델 시도 중: {name}")
+            model = genai.GenerativeModel(name)
+
+            prompt = f"""{SYSTEM_PROMPT}
 
 {compressed_news}
 
-위 뉴스를 바탕으로 코스피 5개, 코스닥 5개 종목을 추천해줘. 반드시 JSON 형식으로만 답변해."""
+위 뉴스를 바탕으로 투자 리포트를 작성하세요.
+가독성을 위해 <b>태그, <i>태그 등을 적절히 사용하고, 줄바꿈을 잘 넣어주세요."""
 
-    response = client.models.generate_content(
-        model=MODEL_NAME,
-        contents=prompt,                    # ← 문자열로 단순 전달 (SDK가 자동 변환)
-        config={
-            "response_mime_type": "application/json",
-            "response_json_schema": RECOMMENDATION_SCHEMA,
-            "temperature": 0.3,
-            "max_output_tokens": 2048
-        }
-    )
-    
-    try:
-        result = json.loads(response.text)
-        return result
-    except Exception as e:
-        print(f"JSON 파싱 실패: {response.text[:400] if hasattr(response, 'text') else 'No response'}")
-        raise e
+            response = model.generate_content(prompt)
+            print(f"✅ {name} 모델 성공")
+            return response.text
+
+        except Exception as e:
+            print(f"❌ {name} 모델 호출 실패: {e}")
+            continue
+
+    # 모든 모델 실패
+    raise Exception("모든 AI 모델 호출에 실패했습니다.")
