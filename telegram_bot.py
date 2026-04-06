@@ -1,5 +1,6 @@
 import requests
 import json
+import re
 from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
 
 def send_telegram(html_message: str):
@@ -16,24 +17,38 @@ def send_telegram(html_message: str):
 def send_error_telegram(error_message: str):
     send_telegram(error_message)
 
+def clean_json_text(text: str) -> str:
+    """JSON 깨짐 복구"""
+    text = text.strip()
+    # 코드블록 제거
+    if text.startswith("```json
+    if text.startswith("```"): text = text[3:]
+    if text.endswith("```"): text = text[:-3]
+    # 불필요한 문자 제거
+    text = re.sub(r'^\s*```json\s*|\s*```\s*$', '', text, flags=re.MULTILINE)
+    return text.strip()
+
 def format_to_html(report_text: str, mode: str) -> str:
-    """JSON 파싱 후 예쁜 HTML + 이모티콘 + 표 형식으로 변환"""
+    """초깔끔 HTML + 이모티콘 + 가독성 최적화"""
+    cleaned = clean_json_text(report_text)
+    
     try:
-        data = json.loads(report_text)
+        data = json.loads(cleaned)
     except:
-        return f"<b>📊 {mode.upper()} 리포트</b>\n\n{report_text[:800]}..."
+        # 최종 fallback
+        return f"<b>📊 {mode.upper()} 리포트</b>\n\n{report_text[:1000]}..."
 
     html = f"<b>📊 {data.get('report_title', f'{mode.upper()} 경제 리포트')}</b>\n\n"
 
-    for market, title in [("kospi", "🔥 코스피 TOP 7"), ("kosdaq", "🔥 코스닥 TOP 7")]:
-        html += f"<b>{title}</b>\n"
+    for market, emoji, title in [("kospi", "🔥", "코스피 TOP 7"), ("kosdaq", "🚀", "코스닥 TOP 7")]:
+        html += f"<b>{emoji} {title}</b>\n\n"
         for item in data.get(market, [])[:7]:
-            html += f"• <b>{item.get('종목명', 'N/A')}</b> "
-            html += f"(상승확률 <b>{item.get('상승확률', 0)}%</b> | 신뢰도 <b>{item.get('신뢰도', 0)}%</b>)\n"
-            html += f"   📌 상승요인: {item.get('상승요인', '')}\n"
+            html += f"📌 <b>{item.get('종목명', 'N/A')}</b>\n"
+            html += f"   📈 상승확률 <b>{item.get('상승확률', 0)}%</b> | "
+            html += f"📊 신뢰도 <b>{item.get('신뢰도', 0)}%</b>\n"
+            html += f"   📋 상승요인: {item.get('상승요인', '')}\n"
             html += f"   🎯 목표가: {item.get('목표가', '미정')}\n"
             html += f"   📍 출처: {item.get('출처', '')}\n\n"
 
-    html += "<i>⚠️ Gemini 분석 결과입니다. 투자 판단은 본인 책임입니다.</i>\n"
-    html += "<i>※ Grok/ChatGPT/Claude/Perplexity 분석은 추가 API 필요</i>"
+    html += "<i>⚠️ Gemini AI 분석 결과입니다. 투자 판단은 본인 책임입니다.</i>"
     return html
