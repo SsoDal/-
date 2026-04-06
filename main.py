@@ -59,15 +59,15 @@ def analyze_and_send(kr_news, us_news, mode):
         print(f"Error: {e}")
 
 if __name__ == "__main__":
+    # 1. 뉴스 수집
     kr = get_kr_news()
     us = get_us_news()
     
-    if not kr and not us: exit()
-
-    # 시간별 실행 로직
-    if now.hour == 21 and 0 <= now.minute < 10:
-        analyze_and_send(kr, us, "daily")
-    elif 7 <= now.hour <= 18 and 0 <= now.minute < 10:
-        analyze_and_send(kr, us, "hourly")
-    else:
-        analyze_and_send(kr, us, "breaking")
+    # 2. 테스트용 강제 메시지 전송 (AI 분석 없이 바로 전송)
+    test_msg = f"✅ 시스템 정상 가동 테스트\n- 한국 뉴스: {len(kr)}건 수집됨\n- 미국 뉴스: {len(us)}건 수집됨\n- 현재 시각: {now.strftime('%Y-%m-%d %H:%M:%S')}"
+    
+    url = f"https://api.telegram.org/bot{os.getenv('TELEGRAM_TOKEN')}/sendMessage"
+    res = requests.post(url, json={"chat_id": os.getenv("TELEGRAM_CHAT_ID"), "text": test_msg})
+    
+    # 결과 출력 (GitHub Actions 로그에서 확인 가능)
+    print(f"전송 시도 결과: {res.status_code}, {res.text}")
