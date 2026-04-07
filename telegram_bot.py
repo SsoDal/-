@@ -1,4 +1,35 @@
-# ... (기존 clean_json_text 함수는 그대로 유지)
+import requests
+import json
+import re
+from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
+
+def send_telegram(html_message: str):
+    """텔레그램으로 HTML 메시지 전송"""
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": html_message,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True
+    }
+    r = requests.post(url, json=payload, timeout=15)
+    r.raise_for_status()
+
+def send_error_telegram(error_message: str):
+    """에러 알림 전송"""
+    try:
+        send_telegram(error_message)
+    except:
+        pass
+
+def clean_json_text(text: str) -> str:
+    if not text:
+        return "{}"
+    text = text.strip()
+    text = re.sub(r'^```json\s*', '', text, flags=re.MULTILINE | re.IGNORECASE)
+    text = re.sub(r'^```\s*', '', text, flags=re.MULTILINE)
+    text = re.sub(r'```\s*$', '', text, flags=re.MULTILINE)
+    return text.strip('` \n\t')
 
 def format_to_html(report_text: str, mode: str) -> str:
     cleaned = clean_json_text(report_text)
@@ -9,15 +40,13 @@ def format_to_html(report_text: str, mode: str) -> str:
 
     html = f"<b>📊 {data.get('report_title', f'{mode.upper()} 경제 리포트')}</b>\n\n"
 
-    # 뉴스 속보
     html += "<b>📰 실시간 경제 뉴스 속보</b>\n"
     html += f"{data.get('news_brief', '뉴스 속보를 불러오는 중...')}\n\n"
     html += "────────────────────\n\n"
 
-    # 종목 추천 (빈 경우에도 메시지 표시)
     for market, emoji, title in [("kospi", "🔥", "코스피 추천"), ("kosdaq", "🚀", "코스닥 추천")]:
+        html += f"<b>{emoji} {title}</b>\n\n"
         items = data.get(market, [])
-        html += f"<b>{emoji} {title} ({len(items)}개)</b>\n\n"
         if not items:
             html += "   (현재 추천 종목이 없습니다)\n\n"
             continue
