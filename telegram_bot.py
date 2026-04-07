@@ -38,14 +38,14 @@ def format_to_html(report_text: str, mode: str) -> str:
 
     html = f"<b>📊 {data.get('report_title', f'{mode.upper()} 경제 리포트')}</b>\n\n"
 
-    # ==================== 실시간 뉴스 속보 ====================
+    # 실시간 뉴스 속보
     html += "<b>📰 실시간 경제 뉴스 속보</b>\n"
     html += f"{data.get('news_brief', '뉴스 속보를 불러오는 중...')}\n\n"
     html += "────────────────────\n\n"
 
-    # ==================== 종목 추천 ====================
+    # 종목 추천
     for market, emoji, title in [("kospi", "🔥", "코스피 추천"), ("kosdaq", "🚀", "코스닥 추천")]:
-        html += f"<b>{emoji} {title} (7~10개)</b>\n\n"
+        html += f"<b>{emoji} {title}</b>\n\n"
         for item in data.get(market, [])[:10]:
             html += f"📌 <b>{item.get('종목명', 'N/A')}</b> "
             html += f"(대장주: <b>{item.get('대장주', 'N/A')}</b>, 차등주: {item.get('차등주', 'N/A')})\n"
