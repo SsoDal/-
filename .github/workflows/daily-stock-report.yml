@@ -2,14 +2,22 @@ name: Daily Stock Report (경제 비서)
 
 on:
   schedule:
-    - cron: '*/30 * * * *'   # 30분마다
+    # KST 09:00 ~ 12:00 → 10분마다 (UTC 00:00 ~ 03:00)
+    - cron: '*/10 0-2 * * *'     # UTC 00:00~02:59 → KST 09:00~11:59
+    - cron: '0 3 * * *'          # UTC 03:00 → KST 12:00 (10분 주기 마무리)
+
+    # 그 외 시간 → 30분마다
+    - cron: '*/30 3-23 * * *'    # UTC 03:30~23:30 → KST 12:30~08:30 (다음날)
+
   workflow_dispatch:
 
 jobs:
   report:
     runs-on: ubuntu-latest
+    
+    # Node.js 24 강제 적용 (경고 제거)
     env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # Node 24 강제 적용
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout repository
